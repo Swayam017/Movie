@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import MoviesList from "./components/Movielist";
 import "./App.css";
 
@@ -8,9 +8,9 @@ function App() {
   const [error, setError] = useState(null);
   const [retrying, setRetrying] = useState(false);
 
-  const retryTimeout = useRef();
+  const retryTimeout = useRef(null);
 
-  async function fetchMoviesHandler() {
+  const fetchMoviesHandler = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
@@ -32,9 +32,8 @@ function App() {
 
       setMovies(loadedMovies);
       setRetrying(false);
-      setError(null);
     } catch (err) {
-      setError("Something went wrong... Retrying");
+      setError(err.message);
       setRetrying(true);
 
       retryTimeout.current = setTimeout(() => {
@@ -43,7 +42,15 @@ function App() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    fetchMoviesHandler();
+
+    return () => {
+      clearTimeout(retryTimeout.current);
+    };
+  }, [fetchMoviesHandler]);
 
   function cancelRetry() {
     clearTimeout(retryTimeout.current);
