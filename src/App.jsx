@@ -9,8 +9,29 @@ function App() {
   const [error, setError] = useState(null);
   const [retrying, setRetrying] = useState(false);
 
-const addMovieHandler = useCallback((movie) => {
-  console.log(movie);
+const addMovieHandler = useCallback(async (movie) => {
+  try {
+    const response = await fetch(
+      "https://movieapp-c022f-default-rtdb.firebaseio.com/movies.json",
+      {
+        method: "POST",
+        body: JSON.stringify(movie),
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to add movie.");
+    }
+
+    const data = await response.json();
+
+    console.log(data);
+  } catch (error) {
+    console.log(error.message);
+  }
 }, []);
 
   const retryTimeout = useRef(null);
