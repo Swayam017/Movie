@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import MoviesList from "./components/Movielist";
+import AddMovie from "./components/AddMovie";
 import "./App.css";
 
 function App() {
@@ -7,6 +8,10 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [retrying, setRetrying] = useState(false);
+
+const addMovieHandler = useCallback((movie) => {
+  console.log(movie);
+}, []);
 
   const retryTimeout = useRef(null);
 
@@ -88,17 +93,21 @@ function App() {
     content = <MoviesList movies={movies} />;
   }
 
-  return (
-    <>
-      <section className="card">
-        <button className="fetch-btn" onClick={fetchMoviesHandler}>
-          Fetch Movies
-        </button>
-      </section>
+ return (
+  <>
+    <AddMovie onAddMovie={addMovieHandler} />
 
-      <section className="card">{content}</section>
-    </>
-  );
+    <section className="card">
+      <button className="fetch-btn" onClick={fetchMoviesHandler}>
+        Fetch Movies
+      </button>
+    </section>
+
+    <section className="card">
+      {content}
+    </section>
+  </>
+);
 }
 
 export default App;
