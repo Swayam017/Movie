@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import MoviesList from "./components/Movielist";
 import "./App.css";
 
@@ -6,68 +6,90 @@ function App() {
   const [movies, setMovies] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [retrying, setRetrying] = useState(false);
 
- async function fetchMoviesHandler() {
-  setIsLoading(true);
-  setError(null);
+  const retryTimeout = useRef();
 
-  try {
-    const response = await fetch("https://swapi.py4e.com/api/films/");
+  async function fetchMoviesHandler() {
+    setIsLoading(true);
+    setError(null);
 
-    if (!response.ok) {
-      throw new Error("Something went wrong!");
+    try {
+      const response = await fetch("https://swapi.py4e.com/api/films/");
+
+      if (!response.ok) {
+        throw new Error("Something went wrong... Retrying");
+      }
+
+      const data = await response.json();
+
+      const loadedMovies = data.results.map((movie) => ({
+        id: movie.episode_id,
+        title: movie.title,
+        openingText: movie.opening_crawl,
+        releaseDate: movie.release_date,
+      }));
+
+      setMovies(loadedMovies);
+      setRetrying(false);
+      setError(null);
+    } catch (err) {
+      setError("Something went wrong... Retrying");
+      setRetrying(true);
+
+      retryTimeout.current = setTimeout(() => {
+        fetchMoviesHandler();
+      }, 5000);
+    } finally {
+      setIsLoading(false);
     }
-
-    const data = await response.json();
-
-    const loadedMovies = data.results.map((movie) => ({
-      id: movie.episode_id,
-      title: movie.title,
-      openingText: movie.opening_crawl,
-      releaseDate: movie.release_date,
-    }));
-
-    setMovies(loadedMovies);
-  } catch (err) {
-    setError(err.message);
-  } finally {
-    setIsLoading(false);
   }
-}
 
-let content = (
-  <div className="empty-state">
-    <div className="empty-icon">🎬</div>
-    <h2>No Movies Found</h2>
-    <p>Click the button above to fetch movies.</p>
-  </div>
-);
+  function cancelRetry() {
+    clearTimeout(retryTimeout.current);
+    setRetrying(false);
+    setError("Retry cancelled.");
+  }
 
-if (isLoading) {
-  content = <p className="loader">Loading...</p>;
-}
+  let content = (
+    <div className="empty-state">
+      <div className="empty-icon">🎬</div>
+      <h2>No Movies Found</h2>
+      <p>Click the button above to fetch movies.</p>
+    </div>
+  );
 
-if (error) {
-  content = <p className="error">{error}</p>;
-}
+  if (isLoading) {
+    content = <p className="loader">Loading...</p>;
+  }
 
-if (!isLoading && !error && movies.length > 0) {
-  content = <MoviesList movies={movies} />;
-}
+  if (error) {
+    content = (
+      <>
+        <p className="error">{error}</p>
+
+        {retrying && (
+          <button className="cancel-btn" onClick={cancelRetry}>
+            Cancel Retry
+          </button>
+        )}
+      </>
+    );
+  }
+
+  if (!isLoading && !error && movies.length > 0) {
+    content = <MoviesList movies={movies} />;
+  }
 
   return (
     <>
-      
       <section className="card">
         <button className="fetch-btn" onClick={fetchMoviesHandler}>
           Fetch Movies
         </button>
       </section>
 
-     
-      <section className="card">
-        {content}
-      </section>
+      <section className="card">{content}</section>
     </>
   );
 }
