@@ -5,51 +5,69 @@ import "./App.css";
 function App() {
   const [movies, setMovies] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  async function fetchMoviesHandler() {
-    setIsLoading(true);
+ async function fetchMoviesHandler() {
+  setIsLoading(true);
+  setError(null);
 
-    try {
-      const response = await fetch(
-        "https://swapi.py4e.com/api/films/"
-      );
+  try {
+    const response = await fetch("https://swapi.py4e.com/api/films/");
 
-      const data = await response.json();
-
-      const loadedMovies = data.results.map((movie) => ({
-        id: movie.episode_id,
-        title: movie.title,
-        openingText: movie.opening_crawl,
-        releaseDate: movie.release_date,
-      }));
-
-      setMovies(loadedMovies);
-    } catch (error) {
-      console.log(error);
+    if (!response.ok) {
+      throw new Error("Something went wrong!");
     }
 
+    const data = await response.json();
+
+    const loadedMovies = data.results.map((movie) => ({
+      id: movie.episode_id,
+      title: movie.title,
+      openingText: movie.opening_crawl,
+      releaseDate: movie.release_date,
+    }));
+
+    setMovies(loadedMovies);
+  } catch (err) {
+    setError(err.message);
+  } finally {
     setIsLoading(false);
   }
+}
+
+let content = (
+  <div className="empty-state">
+    <div className="empty-icon">🎬</div>
+    <h2>No Movies Found</h2>
+    <p>Click the button above to fetch movies.</p>
+  </div>
+);
+
+if (isLoading) {
+  content = <p className="loader">Loading...</p>;
+}
+
+if (error) {
+  content = <p className="error">{error}</p>;
+}
+
+if (!isLoading && !error && movies.length > 0) {
+  content = <MoviesList movies={movies} />;
+}
 
   return (
     <>
-      <section className="fetch-section">
+      
+      <section className="card">
         <button className="fetch-btn" onClick={fetchMoviesHandler}>
           Fetch Movies
         </button>
       </section>
 
-      <section>
-  {isLoading && <p className="loader">Loading...</p>}
-
-  {!isLoading && movies.length > 0 && (
-    <MoviesList movies={movies} />
-  )}
-
-  {!isLoading && movies.length === 0 && (
-    <p className="no-movies">No movies found.</p>
-  )}
-</section>
+     
+      <section className="card">
+        {content}
+      </section>
     </>
   );
 }
