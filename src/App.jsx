@@ -9,6 +9,50 @@ function App() {
   const [error, setError] = useState(null);
   const [retrying, setRetrying] = useState(false);
 
+
+   const retryTimeout = useRef(null);
+
+  const fetchMoviesHandler = useCallback(async () => {
+  setIsLoading(true);
+  setError(null);
+
+  try {
+    const response = await fetch(
+      "https://movieapp-c022f-default-rtdb.firebaseio.com/movies.json"
+    );
+
+    if (!response.ok) {
+      throw new Error("Something went wrong... Retrying");
+    }
+
+    const data = await response.json();
+
+    const loadedMovies = [];
+if(data){
+    for (const key in data) {
+      loadedMovies.push({
+        id: key,
+        title: data[key].title,
+        openingText: data[key].openingText,
+        releaseDate: data[key].releaseDate,
+      });
+    }
+  }
+
+    setMovies(loadedMovies);
+    setRetrying(false);
+  } catch (err) {
+    setError(err.message);
+    setRetrying(true);
+
+    retryTimeout.current = setTimeout(() => {
+      fetchMoviesHandler();
+    }, 5000);
+  } finally {
+    setIsLoading(false);
+  }
+}, []);
+
 const addMovieHandler = useCallback(async (movie) => {
   try {
     const response = await fetch(
@@ -29,46 +73,12 @@ const addMovieHandler = useCallback(async (movie) => {
     const data = await response.json();
 
     console.log(data);
+    fetchMoviesHandler();
   } catch (error) {
     console.log(error.message);
   }
-}, []);
-
-  const retryTimeout = useRef(null);
-
-  const fetchMoviesHandler = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const response = await fetch("https://swapi.py4e.com/api/films/");
-
-      if (!response.ok) {
-        throw new Error("Something went wrong... Retrying");
-      }
-
-      const data = await response.json();
-
-      const loadedMovies = data.results.map((movie) => ({
-        id: movie.episode_id,
-        title: movie.title,
-        openingText: movie.opening_crawl,
-        releaseDate: movie.release_date,
-      }));
-
-      setMovies(loadedMovies);
-      setRetrying(false);
-    } catch (err) {
-      setError(err.message);
-      setRetrying(true);
-
-      retryTimeout.current = setTimeout(() => {
-        fetchMoviesHandler();
-      }, 5000);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+}, [fetchMoviesHandler]);
+ 
 
   useEffect(() => {
     fetchMoviesHandler();
@@ -83,6 +93,29 @@ const addMovieHandler = useCallback(async (movie) => {
     setRetrying(false);
     setError("Retry cancelled.");
   }
+
+  const deleteMovieHandler = useCallback(
+  async (movieId) => {
+    try {
+      const response = await fetch(
+        `https://movieapp-c022f-default-rtdb.firebaseio.com/movies/${movieId}.json`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to delete movie.");
+      }
+
+      // Refresh the list after deletion
+      fetchMoviesHandler();
+    } catch (error) {
+      console.error(error.message);
+    }
+  },
+  [fetchMoviesHandler]
+);
 
   let content = (
     <div className="empty-state">
@@ -111,7 +144,8 @@ const addMovieHandler = useCallback(async (movie) => {
   }
 
   if (!isLoading && !error && movies.length > 0) {
-    content = <MoviesList movies={movies} />;
+    content = <MoviesList movies={movies} 
+    onDeleteMovie={deleteMovieHandler} />;
   }
 
  return (
